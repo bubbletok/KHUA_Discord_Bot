@@ -1,1 +1,1 @@
-# Codeforces_contest_bot
+# KHUA Discord Bot
