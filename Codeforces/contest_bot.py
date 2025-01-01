@@ -22,8 +22,15 @@ async def on_message(message):
       return 
 
   if message.content.startswith("!대회"):
-      current_upcoming_contests = get_contests()
-      await message.channel.send(current_upcoming_contests)
+    try:
+        response = get_contests()
+        if isinstance(response, str):
+            await message.channel.send(response)
+        else:
+            await message.channel.send(embed=response)
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        await message.channel.send("❌ 대회 정보를 가져오는 중 오류가 발생했습니다.")
 
 def get_contests():
    try:
@@ -31,31 +38,16 @@ def get_contests():
        if not contests:
            return "🏁 현재 진행중이거나 예정된 대회가 없습니다."
 
-       response = "🏆 **Codeforces Contests**\n```\n"
-       
-       # 각 열의 너비 설정
-       name_width = 40
-       start_width = 25  # 시작 시간 열 너비 증가
-       length_width = 10
-       remaining_width = 20
-       status_width = 15
-       
-       # 헤더 추가
-       headers = (
-           f"{'Name':<{name_width}}"
-           f"{'Start':<{start_width}}"
-           f"{'Length':<{length_width}}"
-           f"{'Remaining':<{remaining_width}}"
-           f"{'Status':<{status_width}}"
+       embed = discord.Embed(
+           title="🏆 Upcoming Codeforces Contests",
+           color=0x00ff00  # 초록색
        )
-       response += headers + "\n"
-       response += "=" * (name_width + start_width + length_width + remaining_width + status_width) + "\n"
-
+       
        for contest in contests:
-           # 대회 이름 길이 제한
-           name = contest.get('name', 'Unknown')[:name_width].ljust(name_width)
+           # 대회 정보 가져오기
+           name = contest.get('name', 'Unknown')
            
-           # 시작 시간 포맷팅 (날짜 + 시간)
+           # 시작 시간 포맷팅
            full_time = contest.get('start_time', '').split()
            date = full_time[0]
            time = full_time[1][:5]  # HH:MM 형식으로 자르기
@@ -64,36 +56,30 @@ def get_contests():
                formatted_date = date.replace('2024-', '')
            else:
                formatted_date = date.replace('2025-', '')
-               
-           start = f"{formatted_date} {time}".ljust(start_width)
            
-           # 진행 시간 포맷팅
-           length = contest.get('duration', '').ljust(length_width)
-           
-           # 남은 시간 포맷팅
-           remaining = contest.get('remaining_time', '').ljust(remaining_width)
+           # 남은 시간
+           remaining = contest.get('remaining_time', '')
+           length = contest.get('duration', '')
            
            # 상태 표시 및 이모지 추가
            if contest.get('status') == 'ONGOING':
-               status = "🔥 Running"
+               status_emoji = "🔥"
+               description = f"```Duration: {length}\nRemaining: {remaining}```"
            else:
-               status = "⏰ Before start"
-           status = status.ljust(status_width)
+               status_emoji = "⏰"
+               description = f"```Start: {formatted_date} {time}\nDuration: {length}\nRemaining: {remaining}```"
            
-           # 한 줄로 조합
-           contest_info = f"{name}{start}{length}{remaining}{status}"
-           response += contest_info + "\n"
-       
-       response += "```"
-       
+           # 대회 정보를 필드로 추가
+           embed.add_field(
+               name=f"{status_emoji} {name}",
+               value=description,
+               inline=False
+           )
+
        # 푸터 추가
-       response += "\n📢 **Commands:**"
-       response += "\n`!대회` - 대회 목록 조회"
-       response += "\n\n🔔 **Notice:**"
-       response += "\n- 모든 시간은 한국 시간(KST) 기준입니다."
-       response += "\n- 대회 시작 전에 미리 등록하는 것을 잊지 마세요!"
+       embed.set_footer(text="🕒 모든 시간은 한국 시간(KST) 기준입니다")
        
-       return response
+       return embed
 
    except Exception as e:
        print(f"Error in get_contests: {str(e)}")
